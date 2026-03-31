@@ -171,6 +171,31 @@ export default function App() {
     setData((prev) => ({ ...prev, ...fields }));
   };
 
+  const isStepValid = () => {
+    switch (step) {
+      case 1:
+        return data.learning.trim().length > 0;
+      case 2:
+        if (data.investmentGoals.length === 0) return false;
+        if (data.investmentGoals.includes('Sonstiges') && data.investmentGoalsOther.trim() === '') return false;
+        return true;
+      case 3:
+        if (data.interestingTopics.length === 0) return false;
+        if (data.interestingTopics.includes('Sonstiges') && data.interestingTopicsOther.trim() === '') return false;
+        return true;
+      case 4:
+        return data.securityLevel !== '';
+      case 5:
+        if (data.hurdles.length === 0) return false;
+        if (data.hurdles.includes('Sonstiges') && data.hurdlesOther.trim() === '') return false;
+        return true;
+      case 6:
+        return data.feelMoreSecure !== '';
+      default:
+        return true;
+    }
+  };
+
   const toggleArrayItem = (field: 'investmentGoals' | 'interestingTopics' | 'hurdles', item: string) => {
     setData((prev) => {
       const current = prev[field];
@@ -445,15 +470,24 @@ export default function App() {
             {step < 6 ? (
               <button
                 onClick={handleNext}
-                className="bg-swiss-red hover:bg-red-700 text-white font-semibold py-2.5 px-6 rounded-full transition-colors flex items-center gap-2"
+                disabled={!isStepValid()}
+                className={`py-2.5 px-6 rounded-full transition-colors flex items-center gap-2 font-semibold ${
+                  isStepValid()
+                    ? 'bg-swiss-red hover:bg-red-700 text-white'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
               >
                 Weiter <ChevronRight size={18} />
               </button>
             ) : (
               <button
                 onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="bg-swiss-red hover:bg-red-700 disabled:bg-red-300 text-white font-semibold py-2.5 px-6 rounded-full transition-colors flex items-center gap-2"
+                disabled={isSubmitting || !isStepValid()}
+                className={`py-2.5 px-6 rounded-full transition-colors flex items-center gap-2 font-semibold ${
+                  !isSubmitting && isStepValid()
+                    ? 'bg-swiss-red hover:bg-red-700 text-white'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
               >
                 {isSubmitting ? 'Wird gesendet...' : 'Absenden'} <CheckCircle2 size={18} />
               </button>
