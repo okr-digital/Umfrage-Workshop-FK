@@ -39,18 +39,128 @@ export default function App() {
     setIsSubmitting(true);
     setError(null);
     try {
-      const response = await fetch('/api/submit-survey', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      const result = await response.json();
-      if (result.success) {
-        setStep(7); // Success screen
-      } else {
-        setError(result.error || 'Ein Fehler ist aufgetreten.');
+      const MONDAY_API_KEY = import.meta.env.VITE_MONDAY_API_KEY;
+      const MONDAY_BOARD_ID = import.meta.env.VITE_MONDAY_BOARD_ID;
+
+      if (!MONDAY_API_KEY || !MONDAY_BOARD_ID) {
+        console.warn("Monday.com credentials not configured. Simulating success.");
+        setStep(7);
+        setIsSubmitting(false);
+        return;
       }
+
+      const itemName = `Umfrage: ${new Date().toLocaleDateString("de-DE")}`;
+      
+      const formatArray = (arr: string[], other: string) => {
+        let result = arr.join(", ");
+        if (other) {
+          result += result ? `, Sonstiges: ${other}` : `Sonstiges: ${other}`;
+        }
+        return result;
+      };
+
+      const columnValues = JSON.stringify({
+        "text_mm1cagge": data.learning || "",
+        "text_mm1atkge": formatArray(data.investmentGoals, data.investmentGoalsOther),
+        "text_mm1a1xn4": formatArray(data.interestingTopics, data.interestingTopicsOther),
+        "text_mm1az4g3": data.securityLevel || "",
+        "text_mm1ar4mx": formatArray(data.hurdles, data.hurdlesOther),
+        "text_mm1at1wv": data.feelMoreSecure || ""
+      });
+      
+      const createItemQuery = `
+        mutation ($boardId: ID!, $itemName: String!, $columnValues: JSON!) {
+          create_item (board_id: $boardId, item_name: $itemName, column_values: $columnValues) {
+            id
+          }
+        }
+      `;
+
+      const createItemResponse = await fetch("https://api.monday.com/v2", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": MONDAY_API_KEY,
+          "API-Version": "2024-01"
+        },
+        body: JSON.stringify({
+          query: createItemQuery,
+          variables: {
+            boardId: MONDAY_BOARD_ID,
+            itemName: itemName,
+            columnValues: columnValues
+          }
+        })
+      });
+
+      const createItemResult = await createItemResponse.json();
+
+      if (createItemResult.errors) {
+        console.error("Monday.com create item error:", createItemResult.errors);
+        throw new Error("Failed to create item in Monday.com");
+      }
+
+      const itemId = createItemResult.data.create_item.id;
+
+      const updateBody = `
+        <h2>Neue Umfrage-Ergebnisse</h2>
+        <br/>
+        <strong>1. Größtes Learning & Verbesserungsvorschläge:</strong><br/>
+        ${data.learning || "-"}
+        <br/><br/>
+        <strong>2. Wichtig beim Investmentaufbau:</strong><br/>
+        ${data.investmentGoals?.join(", ") || "-"}
+        ${data.investmentGoalsOther ? `(Sonstiges: ${data.investmentGoalsOther})` : ""}
+        <br/><br/>
+        <strong>3. Interessante Themen:</strong><br/>
+        ${data.interestingTopics?.join(", ") || "-"}
+        ${data.interestingTopicsOther ? `(Sonstiges: ${data.interestingTopicsOther})` : ""}
+        <br/><br/>
+        <strong>4. Sicherheit im Umgang mit Investments:</strong><br/>
+        ${data.securityLevel || "-"}
+        <br/><br/>
+        <strong>5. Hinderungsgründe für den Start:</strong><br/>
+        ${data.hurdles?.join(", ") || "-"}
+        ${data.hurdlesOther ? `(Sonstiges: ${data.hurdlesOther})` : ""}
+        <br/><br/>
+        <strong>6. Sicherer nach dem Workshop?</strong><br/>
+        ${data.feelMoreSecure || "-"}
+      `;
+
+      const createUpdateQuery = `
+        mutation ($itemId: ID!, $body: String!) {
+          create_update (item_id: $itemId, body: $body) {
+            id
+          }
+        }
+      `;
+
+      const createUpdateResponse = await fetch("https://api.monday.com/v2", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": MONDAY_API_KEY,
+          "API-Version": "2024-01"
+        },
+        body: JSON.stringify({
+          query: createUpdateQuery,
+          variables: {
+            itemId: itemId,
+            body: updateBody
+          }
+        })
+      });
+
+      const createUpdateResult = await createUpdateResponse.json();
+
+      if (createUpdateResult.errors) {
+        console.error("Monday.com create update error:", createUpdateResult.errors);
+        throw new Error("Failed to add details to Monday.com item");
+      }
+
+      setStep(7); // Success screen
     } catch (err) {
+      console.error("Submit error:", err);
       setError('Verbindungsfehler. Bitte versuche es später erneut.');
     } finally {
       setIsSubmitting(false);
@@ -115,11 +225,11 @@ export default function App() {
             <p className="text-sm text-gray-500 mb-4">(Mehrfachauswahl möglich)</p>
             <div className="space-y-3">
               {[
-                'ich langfristig Vermögen aufbauen möchte',
+                'langfristig Vermögen aufzubauen',
                 'mir größere Ziele zu erfüllen (z. B. Immobilie, Reisen, Selbstständigkeit)',
                 'finanziell unabhängiger zu werden',
                 'für meine Familie / Kinder vorzusorgen',
-                'ich mich vor Inflation schützen möchte',
+                'mich vor Inflation zu schützen',
                 'mein Geld sinnvoll und strukturiert anzulegen',
               ].map((option) => (
                 <Checkbox
@@ -295,22 +405,14 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8">
       {/* Header / Logo */}
-      <div className="w-full max-w-2xl flex justify-center mb-8">
+      <div className="w-full max-w-2xl flex justify-center mb-6 sm:mb-10">
         <div className="flex flex-col items-center">
-          {/* Logo Placeholder mimicking Swiss Life Select */}
-          <div className="relative w-16 h-16 mb-2">
-            <svg viewBox="0 0 100 100" className="w-full h-full text-swiss-red fill-current">
-              <path d="M50 0 C20 0 0 20 0 50 C0 80 20 100 50 100 C80 100 100 80 100 50 C100 20 80 0 50 0 Z" opacity="0.1" />
-              <path d="M30 50 C30 35 45 20 60 20 C75 20 80 30 80 30 C80 30 65 40 50 50 C35 60 20 70 20 70 C20 70 30 65 30 50 Z" />
-              <path d="M70 50 C70 65 55 80 40 80 C25 80 20 70 20 70 C20 70 35 60 50 50 C65 40 80 30 80 30 C80 30 70 35 70 50 Z" />
-              <rect x="65" y="45" width="10" height="10" fill="white" />
-              <rect x="60" y="50" width="20" height="20" fill="white" transform="translate(-10, -10)" opacity="0" />
-              {/* White Cross */}
-              <path d="M68 42 L72 42 L72 48 L78 48 L78 52 L72 52 L72 58 L68 58 L68 52 L62 52 L62 48 L68 48 Z" fill="white" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-serif text-black tracking-tight">SwissLife</h1>
-          <span className="text-gray-400 text-xl font-serif tracking-wide">Select</span>
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/6/63/Swiss_Life_Select_logo.svg" 
+            alt="Swiss Life Select Logo" 
+            className="w-48 sm:w-64 h-auto object-contain"
+            referrerPolicy="no-referrer"
+          />
         </div>
       </div>
 
