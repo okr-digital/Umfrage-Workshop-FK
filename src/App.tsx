@@ -402,19 +402,8 @@ export default function App() {
     }
   };
 
- return (
+  return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8">
-      {/* Header / Logo */}
-      <div className="w-full max-w-2xl flex justify-center mb-6 sm:mb-10">
-        <div className="flex flex-col items-center">
-          <img 
-            src="./SL_S_Logo_hoch_RGB.png" 
-            alt="Swiss Life Select Logo" 
-            className="w-48 sm:w-64 h-auto object-contain"
-          />
-        </div>
-      </div>
-
       {/* Main Card */}
       <div className="w-full max-w-2xl bg-white rounded-3xl shadow-xl overflow-hidden relative">
         {/* Progress Bar */}
