@@ -1,0 +1,5 @@
+{
+  "name": "Swiss Life Select Workshop Umfrage",
+  "description": "Eine moderne Umfrage-App zur Erfassung von Feedback nach einem Workshop, mit direkter Anbindung an Monday.com.",
+  "requestFramePermissions": []
+}
