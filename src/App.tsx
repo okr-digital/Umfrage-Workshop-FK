@@ -12,6 +12,7 @@ type SurveyData = {
   hurdles: string[];
   hurdlesOther: string;
   feelMoreSecure: string;
+  email: string;
 };
 
 const initialData: SurveyData = {
@@ -24,6 +25,7 @@ const initialData: SurveyData = {
   hurdles: [],
   hurdlesOther: '',
   feelMoreSecure: '',
+  email: '',
 };
 
 export default function App() {
@@ -44,7 +46,7 @@ export default function App() {
 
       if (!MONDAY_API_KEY || !MONDAY_BOARD_ID) {
         console.warn("Monday.com credentials not configured. Simulating success.");
-        setStep(7);
+        setStep(8);
         setIsSubmitting(false);
         return;
       }
@@ -65,7 +67,8 @@ export default function App() {
         "text_mm1a1xn4": formatArray(data.interestingTopics, data.interestingTopicsOther),
         "text_mm1az4g3": data.securityLevel || "",
         "text_mm1ar4mx": formatArray(data.hurdles, data.hurdlesOther),
-        "text_mm1at1wv": data.feelMoreSecure || ""
+        "text_mm1at1wv": data.feelMoreSecure || "",
+        "text_mm1zs7ey": data.email || ""
       });
       
       const createItemQuery = `
@@ -125,6 +128,9 @@ export default function App() {
         <br/><br/>
         <strong>6. Sicherer nach dem Workshop?</strong><br/>
         ${data.feelMoreSecure || "-"}
+        <br/><br/>
+        <strong>7. E-Mail Adresse:</strong><br/>
+        ${data.email || "-"}
       `;
 
       const createUpdateQuery = `
@@ -158,7 +164,7 @@ export default function App() {
         throw new Error("Failed to add details to Monday.com item");
       }
 
-      setStep(7); // Success screen
+      setStep(8); // Success screen
     } catch (err) {
       console.error("Submit error:", err);
       setError('Verbindungsfehler. Bitte versuche es später erneut.');
@@ -191,6 +197,8 @@ export default function App() {
         return true;
       case 6:
         return data.feelMoreSecure !== '';
+      case 7:
+        return data.email.trim().length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email);
       default:
         return true;
     }
@@ -410,6 +418,21 @@ export default function App() {
         );
       case 7:
         return (
+          <QuestionWrapper title="7. Wie lautet deine E-Mail Adresse?">
+            <div className="mt-6">
+              <input
+                type="email"
+                className="w-full border-2 border-gray-200 rounded-xl p-4 text-lg focus:border-swiss-red focus:ring-2 focus:ring-red-100 outline-none transition-all"
+                value={data.email}
+                onChange={(e) => updateData({ email: e.target.value })}
+                placeholder="deine.email@beispiel.de"
+                required
+              />
+            </div>
+          </QuestionWrapper>
+        );
+      case 8:
+        return (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -432,11 +455,11 @@ export default function App() {
       {/* Main Card */}
       <div className="w-full max-w-2xl bg-white rounded-3xl shadow-xl overflow-hidden relative">
         {/* Progress Bar */}
-        {step > 0 && step < 7 && (
+        {step > 0 && step < 8 && (
           <div className="h-1.5 w-full bg-gray-100 absolute top-0 left-0">
             <div
               className="h-full bg-swiss-red transition-all duration-500 ease-out"
-              style={{ width: `${(step / 6) * 100}%` }}
+              style={{ width: `${(step / 7) * 100}%` }}
             />
           </div>
         )}
@@ -456,7 +479,7 @@ export default function App() {
         </div>
 
         {/* Navigation Footer */}
-        {step > 0 && step < 7 && (
+        {step > 0 && step < 8 && (
           <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
             <button
               onClick={handleBack}
@@ -467,7 +490,7 @@ export default function App() {
 
             {error && <span className="text-red-500 text-sm font-medium">{error}</span>}
 
-            {step < 6 ? (
+            {step < 7 ? (
               <button
                 onClick={handleNext}
                 disabled={!isStepValid()}
